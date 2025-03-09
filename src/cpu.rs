@@ -108,61 +108,62 @@ impl<'a> Cpu<'a> {
 
         let nibbles = instruction.nibbles_lo();
         match nibbles {
-            (0x0, 0x0, 0xE, 0x0) => self.process_clear_display(&instruction),
-            (0x0, 0x0, 0xE, 0xE) => self.process_return_from_subroutine(&instruction),
+            (0x0, 0x0, 0x0, 0x0) => self.ignore_instruction(),
+            (0x0, 0x0, 0xE, 0x0) => self.exec_clear_display(&instruction),
+            (0x0, 0x0, 0xE, 0xE) => self.exec_return_from_subroutine(&instruction),
 
-            (0x1, _, _, _) => self.process_jump(&instruction),
+            (0x1, _, _, _) => self.exec_jump(&instruction),
 
-            (0x2, _, _, _) => self.process_call_subroutine(&instruction),
+            (0x2, _, _, _) => self.exec_call_subroutine(&instruction),
 
-            (0x3, _, _, _) => self.process_skip_if_equal_byte(&instruction),
+            (0x3, _, _, _) => self.exec_skip_if_equal_kk(&instruction),
 
-            (0x4, _, _, _) => self.process_skip_if_not_equal_byte(&instruction),
+            (0x4, _, _, _) => self.exec_skip_if_not_equal_kk(&instruction),
 
-            (0x5, _, _, _) => self.process_skip_if_equal_register(&instruction),
+            (0x5, _, _, _) => self.exec_skip_if_equal_register(&instruction),
 
-            (0x6, _, _, _) => self.process_set_register(&instruction),
+            (0x6, _, _, _) => self.exec_set_register(&instruction),
 
-            (0x7, _, _, _) => self.process_add_byte(&instruction),
+            (0x7, _, _, _) => self.exec_add_kk(&instruction),
 
-            (0x8, _, _, 0x0) => self.process_copy_register_value(&instruction),
-            (0x8, _, _, 0x2) => self.process_and_registers(&instruction),
-            (0x8, _, _, 0x1) => self.process_or_registers(&instruction),
-            (0x8, _, _, 0x3) => self.process_xor_registers(&instruction),
-            (0x8, _, _, 0x4) => self.process_add_registers(&instruction),
-            (0x8, _, _, 0x5) => self.process_sub_registers(&instruction),
-            (0x8, _, _, 0x6) => self.process_shift_right(&instruction),
-            (0x8, _, _, 0x7) => self.process_subn_registers(&instruction),
-            (0x8, _, _, 0xE) => self.process_shift_left(&instruction),
+            (0x8, _, _, 0x0) => self.exec_copy_register_value(&instruction),
+            (0x8, _, _, 0x2) => self.exec_and(&instruction),
+            (0x8, _, _, 0x1) => self.exec_or(&instruction),
+            (0x8, _, _, 0x3) => self.exec_xor(&instruction),
+            (0x8, _, _, 0x4) => self.exec_add(&instruction),
+            (0x8, _, _, 0x5) => self.exec_sub(&instruction),
+            (0x8, _, _, 0x6) => self.exec_shift_right(&instruction),
+            (0x8, _, _, 0x7) => self.exec_subn(&instruction),
+            (0x8, _, _, 0xE) => self.exec_shift_left(&instruction),
 
-            (0x9, _, _, _) => self.process_skip_if_not_equal_register(&instruction),
+            (0x9, _, _, _) => self.exec_skip_if_not_equal_register(&instruction),
 
-            (0xA, _, _, _) => self.process_set_register_i_to_address(&instruction),
+            (0xA, _, _, _) => self.exec_set_register_i_to_nnn(&instruction),
 
-            (0xB, _, _, _) => self.process_move_program_counter(&instruction),
+            (0xB, _, _, _) => self.exec_move_program_counter(&instruction),
 
-            (0xC, _, _, _) => self.process_generate_random_number(&instruction),
+            (0xC, _, _, _) => self.exec_generate_random_number(&instruction),
 
-            (0xD, _, _, _) => self.process_display_sprite(&instruction),
+            (0xD, _, _, _) => self.exec_display_sprite(&instruction),
 
-            (0xE, _, _, 0x1) => self.process_skip_if_key_not_pressed(&instruction),
-            (0xE, _, _, 0xE) => self.process_skip_if_key_pressed(&instruction),
+            (0xE, _, _, 0x1) => self.exec_skip_if_key_not_pressed(&instruction),
+            (0xE, _, _, 0xE) => self.exec_skip_if_key_pressed(&instruction),
 
-            (0xF, _, 0x0, 0x7) => self.process_set_vx_to_delay_timer(&instruction),
-            (0xF, _, 0x0, 0xA) => self.process_store_key_press(&instruction),
-            (0xF, _, 0x1, 0x5) => self.process_set_delay_timer(&instruction),
-            (0xF, _, 0x1, 0x8) => self.process_set_sound_timer(&instruction),
-            (0xF, _, 0x1, 0xE) => self.process_add_vx_to_i(&instruction),
+            (0xF, _, 0x0, 0x7) => self.exec_set_vx_to_delay_timer(&instruction),
+            (0xF, _, 0x0, 0xA) => self.exec_wait_until_key_press(&instruction),
+            (0xF, _, 0x1, 0x5) => self.exec_set_delay_timer(&instruction),
+            (0xF, _, 0x1, 0x8) => self.exec_set_sound_timer(&instruction),
+            (0xF, _, 0x1, 0xE) => self.exec_add_vx_to_i(&instruction),
 
-            (0xF, _, 0x2, _) => self.process_set_i_to_sprite_address(&instruction),
-            (0xF, _, 0x3, _) => self.process_store_vx_as_bsd_in_memory(&instruction),
-            (0xF, _, 0x5, _) => self.process_store_registers_in_memory(&instruction),
-            (0xF, _, 0x6, _) => self.process_load_registers_from_memory(&instruction),
+            (0xF, _, 0x2, _) => self.exec_set_i_to_sprite_address(&instruction),
+            (0xF, _, 0x3, _) => self.exec_store_vx_as_bsd_in_memory(&instruction),
+            (0xF, _, 0x5, _) => self.exec_store_registers_in_memory(&instruction),
+            (0xF, _, 0x6, _) => self.exec_load_registers_from_memory(&instruction),
             _ => panic!("unexpected instruction"),
         };
     }
 
-    fn process_return_from_subroutine(&mut self, _instruction: &Instruction) {
+    fn exec_return_from_subroutine(&mut self, _instruction: &Instruction) {
         let stack_pointer = self
             .registers
             .stack_pointer
@@ -181,19 +182,19 @@ impl<'a> Cpu<'a> {
             .set_to_address(*return_address);
     }
 
-    fn process_clear_display(&mut self, _instruction: &Instruction) {
+    fn exec_clear_display(&mut self, _instruction: &Instruction) {
         self.renderer.borrow_mut().clear_display();
         self.registers.program_counter.increment();
     }
 
     /// The value of delay timer register is placed into Vx.
-    fn process_set_vx_to_delay_timer(&mut self, instruction: &Instruction) {
+    fn exec_set_vx_to_delay_timer(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
         self.registers.general_registers[x] = self.registers.delay_timer;
         self.registers.program_counter.increment();
     }
 
-    fn process_skip_if_key_not_pressed(&mut self, instruction: &Instruction) {
+    fn exec_skip_if_key_not_pressed(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
         let vx = self.registers.general_registers[x];
         if !self.keyboard.borrow().is_key_pressed_or_held(&vx) {
@@ -203,7 +204,7 @@ impl<'a> Cpu<'a> {
         }
     }
 
-    fn process_skip_if_key_pressed(&mut self, instruction: &Instruction) {
+    fn exec_skip_if_key_pressed(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
         let vx = self.registers.general_registers[x];
         if self.keyboard.borrow().is_key_pressed_or_held(&vx) {
@@ -215,7 +216,7 @@ impl<'a> Cpu<'a> {
 
     /// The interpreter reads n bytes from memory, starting at the address stored in I.
     /// These bytes are then displayed as sprites on screen at coordinates (Vx, Vy)
-    fn process_display_sprite(&mut self, instruction: &Instruction) {
+    fn exec_display_sprite(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
         let y = instruction.y() as usize;
         let n = instruction.fourth_nibble();
@@ -233,7 +234,7 @@ impl<'a> Cpu<'a> {
     /// The interpreter generates a random number from 0 to 255,
     /// which is then ANDed with the value kk. The results are stored in Vx.
     /// See instruction 8xy2 for more information on AND.
-    fn process_generate_random_number(&mut self, instruction: &Instruction) {
+    fn exec_generate_random_number(&mut self, instruction: &Instruction) {
         let kk = instruction.kk();
         let x = instruction.x() as usize;
         let random_num: u8 = rand::random();
@@ -242,7 +243,7 @@ impl<'a> Cpu<'a> {
     }
 
     /// The program counter is set to nnn plus the value of V0.
-    fn process_move_program_counter(&mut self, instruction: &Instruction) {
+    fn exec_move_program_counter(&mut self, instruction: &Instruction) {
         let nnn = instruction.nnn();
         let v0 = self.registers.general_registers[0];
         self.registers
@@ -251,13 +252,13 @@ impl<'a> Cpu<'a> {
     }
 
     /// The value of register I is set to nnn.
-    fn process_set_register_i_to_address(&mut self, instruction: &Instruction) {
+    fn exec_set_register_i_to_nnn(&mut self, instruction: &Instruction) {
         let nnn = instruction.nnn();
         self.registers.i = nnn;
         self.registers.program_counter.increment();
     }
 
-    fn process_skip_if_not_equal_register(&mut self, instruction: &Instruction) {
+    fn exec_skip_if_not_equal_register(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
         let y = instruction.y() as usize;
         let vx = self.registers.general_registers[x];
@@ -268,7 +269,7 @@ impl<'a> Cpu<'a> {
             self.registers.program_counter.increment();
         }
     }
-    fn process_skip_if_equal_register(&mut self, instruction: &Instruction) {
+    fn exec_skip_if_equal_register(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
         let y = instruction.y() as usize;
         let vx = self.registers.general_registers[x];
@@ -281,22 +282,22 @@ impl<'a> Cpu<'a> {
     }
 
     /// Add byte kk to the register x. No carry flag is set in case of an overflow
-    fn process_add_byte(&mut self, instruction: &Instruction) {
+    fn exec_add_kk(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
-        let byte = instruction.kk();
-        let (result, _overflow) = self.registers.general_registers[x].overflowing_add(byte);
+        let kk = instruction.kk();
+        let (result, _overflow) = self.registers.general_registers[x].overflowing_add(kk);
         self.registers.general_registers[x] = result;
         self.registers.program_counter.increment();
     }
 
-    fn process_set_register(&mut self, instruction: &Instruction) {
+    fn exec_set_register(&mut self, instruction: &Instruction) {
         let register_address = instruction.x() as usize;
         let byte = instruction.kk();
         self.registers.general_registers[register_address] = byte;
         self.registers.program_counter.increment();
     }
 
-    fn process_skip_if_not_equal_byte(&mut self, instruction: &Instruction) {
+    fn exec_skip_if_not_equal_kk(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
         let kk = instruction.kk();
 
@@ -307,7 +308,7 @@ impl<'a> Cpu<'a> {
         }
     }
 
-    fn process_skip_if_equal_byte(&mut self, instruction: &Instruction) {
+    fn exec_skip_if_equal_kk(&mut self, instruction: &Instruction) {
         let x = instruction.x();
         let kk = instruction.kk();
 
@@ -318,7 +319,7 @@ impl<'a> Cpu<'a> {
         }
     }
 
-    fn process_call_subroutine(&mut self, instruction: &Instruction) {
+    fn exec_call_subroutine(&mut self, instruction: &Instruction) {
         self.registers.stack_pointer = if self.registers.stack_pointer.is_none() {
             Some(0)
         } else {
@@ -332,13 +333,13 @@ impl<'a> Cpu<'a> {
         self.registers.program_counter.set_to_address(address);
     }
 
-    fn process_jump(&mut self, instruction: &Instruction) {
+    fn exec_jump(&mut self, instruction: &Instruction) {
         let address = instruction.nnn();
         self.registers.program_counter.set_to_address(address);
     }
 
     /// Stores the value of register Vy in register Vx.
-    fn process_copy_register_value(&mut self, instruction: &Instruction) {
+    fn exec_copy_register_value(&mut self, instruction: &Instruction) {
         let x = instruction.x();
         let y = instruction.y();
         self.registers.general_registers[x as usize] = self.registers.general_registers[y as usize];
@@ -348,7 +349,7 @@ impl<'a> Cpu<'a> {
     /// Performs a bitwise OR on the values of Vx and Vy, then stores the result in Vx.
     /// A bitwise OR compares the corresponding bits from two values, and if either bit is 1,
     /// then the same bit in the result is also 1. Otherwise, it is 0.
-    fn process_or_registers(&mut self, instruction: &Instruction) {
+    fn exec_or(&mut self, instruction: &Instruction) {
         let x = instruction.x();
         let y = instruction.y();
         self.registers.general_registers[x as usize] |=
@@ -359,7 +360,7 @@ impl<'a> Cpu<'a> {
     /// Performs a bitwise AND on the values of Vx and Vy, then stores the result in Vx.
     /// A bitwise AND compares the corresponding bits from two values,
     /// and if both bits are 1, then the same bit in the result is also 1. Otherwise, it is 0.
-    fn process_and_registers(&mut self, instruction: &Instruction) {
+    fn exec_and(&mut self, instruction: &Instruction) {
         let x = instruction.x();
         let y = instruction.y();
         self.registers.general_registers[x as usize] &=
@@ -367,7 +368,7 @@ impl<'a> Cpu<'a> {
         self.registers.program_counter.increment();
     }
 
-    fn process_xor_registers(&mut self, instruction: &Instruction) {
+    fn exec_xor(&mut self, instruction: &Instruction) {
         let x = instruction.x();
         let y = instruction.y();
         self.registers.general_registers[x as usize] ^=
@@ -377,7 +378,7 @@ impl<'a> Cpu<'a> {
 
     /// The values of Vx and Vy are added together. If the result is greater than 8 bits (i.e., > 255,) VF is set to 1,
     /// otherwise 0. Only the lowest 8 bits of the result are kept, and stored in Vx.
-    fn process_add_registers(&mut self, instruction: &Instruction) {
+    fn exec_add(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
         let y = instruction.y() as usize;
         let (result, overflow) = (self.registers.general_registers[x])
@@ -388,7 +389,7 @@ impl<'a> Cpu<'a> {
         self.registers.program_counter.increment();
     }
 
-    fn process_sub_registers(&mut self, instruction: &Instruction) {
+    fn exec_sub(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
         let y = instruction.y() as usize;
         let vx = self.registers.general_registers[x];
@@ -400,7 +401,7 @@ impl<'a> Cpu<'a> {
         self.registers.program_counter.increment();
     }
 
-    fn process_shift_right(&mut self, instruction: &Instruction) {
+    fn exec_shift_right(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
         let y = instruction.y() as usize;
         let vy = self.registers.general_registers[y];
@@ -410,7 +411,7 @@ impl<'a> Cpu<'a> {
         self.registers.program_counter.increment();
     }
 
-    fn process_subn_registers(&mut self, instruction: &Instruction) {
+    fn exec_subn(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
         let y = instruction.y() as usize;
         let vx = self.registers.general_registers[x];
@@ -422,7 +423,7 @@ impl<'a> Cpu<'a> {
         self.registers.program_counter.increment();
     }
 
-    fn process_shift_left(&mut self, instruction: &Instruction) {
+    fn exec_shift_left(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
         let y = instruction.y() as usize;
         let vy = self.registers.general_registers[y];
@@ -433,7 +434,7 @@ impl<'a> Cpu<'a> {
     }
 
     /// All execution stops until a key is pressed, then the value of that key is stored in Vx.
-    fn process_store_key_press(&mut self, instruction: &Instruction) {
+    fn exec_wait_until_key_press(&mut self, instruction: &Instruction) {
         let pressed_key = self.keyboard.borrow().get_pressed_key();
         if let Some(chip_8_key) = pressed_key {
             let x = instruction.x() as usize;
@@ -445,7 +446,7 @@ impl<'a> Cpu<'a> {
     }
 
     /// Delay timer is set equal to the value of Vx.
-    fn process_set_delay_timer(&mut self, instruction: &Instruction) {
+    fn exec_set_delay_timer(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
         let vx = self.registers.general_registers[x];
         self.registers.delay_timer = vx;
@@ -453,7 +454,7 @@ impl<'a> Cpu<'a> {
     }
 
     /// Sound timer is set equal to the value of Vx.
-    fn process_set_sound_timer(&mut self, instruction: &Instruction) {
+    fn exec_set_sound_timer(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
         let vx = self.registers.general_registers[x];
         self.registers.sound_timer = vx;
@@ -461,7 +462,7 @@ impl<'a> Cpu<'a> {
     }
 
     /// The values of I and Vx are added, and the results are stored in I.
-    fn process_add_vx_to_i(&mut self, instruction: &Instruction) {
+    fn exec_add_vx_to_i(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
         let vx = self.registers.general_registers[x];
         self.registers.i += vx as u16;
@@ -470,7 +471,7 @@ impl<'a> Cpu<'a> {
 
     /// The value of I is set to the location for the hexadecimal sprite corresponding to the value of Vx.
     /// See section 2.4, Display, for more information on the Chip-8 hexadecimal font.
-    fn process_set_i_to_sprite_address(&mut self, instruction: &Instruction) {
+    fn exec_set_i_to_sprite_address(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
         let vx = self.registers.general_registers[x];
         let sprite_address = (vx * 5) as u16; // a sprite is 5 bytes in size
@@ -480,7 +481,7 @@ impl<'a> Cpu<'a> {
 
     /// Takes the decimal value of Vx, and places the hundreds digit in memory at location in I,
     /// the tens digit at location I+1, and the ones digit at location I+2
-    fn process_store_vx_as_bsd_in_memory(&mut self, instruction: &Instruction) {
+    fn exec_store_vx_as_bsd_in_memory(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
         let vx = self.registers.general_registers[x];
 
@@ -491,7 +492,7 @@ impl<'a> Cpu<'a> {
         self.registers.program_counter.increment();
     }
 
-    fn process_store_registers_in_memory(&mut self, instruction: &Instruction) {
+    fn exec_store_registers_in_memory(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
         //let vx = self.registers.general_registers[x];
 
@@ -501,7 +502,7 @@ impl<'a> Cpu<'a> {
         self.registers.program_counter.increment();
     }
 
-    fn process_load_registers_from_memory(&mut self, instruction: &Instruction) {
+    fn exec_load_registers_from_memory(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
         //let vx = self.registers.general_registers[x];
 
@@ -511,6 +512,10 @@ impl<'a> Cpu<'a> {
         for (index, value) in read_data.iter().enumerate() {
             self.registers.general_registers[index] = *value;
         }
+        self.registers.program_counter.increment();
+    }
+
+    fn ignore_instruction(&mut self) {
         self.registers.program_counter.increment();
     }
 }
