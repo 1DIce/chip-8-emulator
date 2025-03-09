@@ -62,6 +62,6 @@ impl Instruction {
             let right = byte.right();
             print!("{left:x}{right:x}");
         }
-        print!("\n");
+        println!();
     }
 }

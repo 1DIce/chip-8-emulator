@@ -5,44 +5,10 @@ use std::time::Instant;
 use crate::instruction::Instruction;
 use crate::keyboard::Keyboard;
 use crate::memory::Memory;
+use crate::program_counter::ProgramCounter;
 use crate::renderer::Renderer;
 
 const CARRY_REG_ADDRESS: usize = 0xF;
-
-pub struct ProgramCounter {
-    /// used to store the currently executing address
-    ptr: u16,
-}
-
-impl ProgramCounter {
-    fn new() -> Self {
-        return Self { ptr: 0x200 };
-    }
-
-    pub fn address(&self) -> u16 {
-        return self.ptr;
-    }
-
-    pub fn peek(&self) -> u16 {
-        return self.ptr + 2;
-    }
-
-    pub fn increment(&mut self) {
-        self.ptr += 2;
-    }
-
-    pub fn skip_instruction(&mut self) {
-        self.ptr += 4;
-    }
-
-    pub fn set_to_address(&mut self, address: u16) {
-        assert!(
-            address >= 0x200,
-            "stack pointer address should be at least the first program address"
-        );
-        self.ptr = address;
-    }
-}
 
 struct Registers {
     /// 16 general purpose 8-bit registers, usually referred to as Vx, where x is a hexadecimal digit (0 through F)
@@ -518,7 +484,7 @@ impl<'a> Cpu<'a> {
 
         let registers = self.registers.general_registers;
         let i = self.registers.i;
-        self.memory.write_bytes(i, &registers[0..=(x as usize)]);
+        self.memory.write_bytes(i, &registers[0..=x]);
         self.registers.program_counter.increment();
     }
 
