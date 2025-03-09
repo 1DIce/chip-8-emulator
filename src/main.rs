@@ -1,5 +1,11 @@
-use anyhow::{anyhow, Result};
-use std::{cell::RefCell, fs, time::Instant};
+use anyhow::{anyhow, Error, Result};
+use std::{
+    cell::RefCell,
+    env::{self, args},
+    fs, os,
+    path::Path,
+    time::Instant,
+};
 
 use cpu::Cpu;
 use keyboard::Keyboard;
@@ -13,11 +19,20 @@ use winit::{
 };
 
 mod cpu;
+mod instruction;
 mod keyboard;
 mod memory;
 mod renderer;
 
-fn main() {
+fn main() -> Result<()> {
+    let args: Vec<String> = env::args().collect();
+
+    let rom: Vec<u8> = if args.len() > 1 {
+        load_rom(&args[1])?
+    } else {
+        load_rom("./roms/1-chip8-logo.ch8")?
+    };
+
     let event_loop = EventLoop::new().expect("Should create EventLoop");
     // ControlFlow::Poll continuously runs the event loop, even if the OS hasn't
     // dispatched any events. This is ideal for games and similar applications.
@@ -46,11 +61,11 @@ fn main() {
     //let expected_cycles = 39;
     //let program = load_rom("./roms/2-ibm-logo.ch8").expect("rom should be loaded");
     //let expected_cycles = 20;
-    //let program = load_rom("./roms/3-corax+.ch8").expect("rom should be loaded");
-    //let expected_cycles = 10000;
-    let program = load_rom("./roms/BLINKY").expect("rom should be loaded");
-    let expected_cycles = 1000000000;
-    cpu.load_program_into_memory(&program);
+    let program = load_rom("./roms/3-corax+.ch8").expect("rom should be loaded");
+    let expected_cycles = 10000;
+    //let program = load_rom("./roms/BLINKY").expect("rom should be loaded");
+    //let expected_cycles = 1000000000;
+    cpu.load_program_into_memory(&rom);
 
     let mut cycle_count = 0;
 
@@ -80,8 +95,12 @@ fn main() {
         }
         window.request_redraw();
     });
+    return Ok(());
 }
 
 fn load_rom(file_path: &str) -> Result<Vec<u8>> {
-    return fs::read(file_path).map_err(|e| anyhow!(e));
+    if fs::exists(file_path).unwrap_or(false) {
+        return fs::read(file_path).map_err(|e| anyhow!(e));
+    }
+    return Err(anyhow!("Rom file '{}' does not exist", file_path));
 }

@@ -2,8 +2,7 @@ use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::time::Instant;
 
-use u4::{AsNibbles, Stack, U4};
-
+use crate::instruction::Instruction;
 use crate::keyboard::Keyboard;
 use crate::memory::Memory;
 use crate::renderer::Renderer;
@@ -122,89 +121,69 @@ impl<'a> Cpu<'a> {
         self.process_instructions(&instruction);
     }
 
-    fn process_instructions(&mut self, instruction_bytes: &[u8]) {
-        let instruction = Stack::from_iter(&AsNibbles(instruction_bytes));
+    fn process_instructions(&mut self, instruction_bytes: &[u8; 2]) {
+        let instruction = Instruction::new(instruction_bytes);
 
         print!("Instruction: ");
-        for nib in instruction.iter() {
-            print!("{:x} ", nib);
-        }
-        println!("");
+        instruction.print();
 
-        assert_eq!(instruction.len(), 4);
-        let first_nibble = instruction.get(0).expect("First nibble should exist");
-        match first_nibble {
-            u4::U4::Dec00 => {
-                if get_second_nibble(&instruction) == u4::U4::Dec00
-                    && get_third_nibble(&instruction) == u4::U4::Dec14
-                    && get_last_nibble(&instruction) == u4::U4::Dec00
-                {
-                    self.process_clear_display(&instruction)
-                } else if get_second_nibble(&instruction) == u4::U4::Dec00
-                    && get_third_nibble(&instruction) == u4::U4::Dec14
-                    && get_last_nibble(&instruction) == u4::U4::Dec14
-                {
-                    self.process_return_from_subroutine(&instruction)
-                } else {
-                    // ignoring 0nnn instruction
-                }
-            }
-            u4::U4::Dec01 => self.process_jump(&instruction),
-            u4::U4::Dec02 => self.process_call_subroutine(&instruction),
-            u4::U4::Dec03 => self.process_skip_if_equal_byte(&instruction),
-            u4::U4::Dec04 => self.process_skip_if_not_equal_byte(&instruction),
-            u4::U4::Dec05 => self.process_skip_if_equal_register(&instruction),
-            u4::U4::Dec06 => self.process_set_register(&instruction),
-            u4::U4::Dec07 => self.process_add_byte(&instruction),
+        let nibbles = instruction.nibbles_lo();
+        match nibbles {
+            (0x0, 0x0, 0xE, 0x0) => self.process_clear_display(&instruction),
+            (0x0, 0x0, 0xE, 0xE) => self.process_return_from_subroutine(&instruction),
 
-            u4::U4::Dec08 => match get_last_nibble(&instruction) {
-                U4::Dec00 => self.process_copy_register_value(&instruction),
-                U4::Dec01 => self.process_or_registers(&instruction),
-                U4::Dec02 => self.process_and_registers(&instruction),
-                U4::Dec03 => self.process_xor_registers(&instruction),
-                U4::Dec04 => self.process_add_registers(&instruction),
-                U4::Dec05 => self.process_sub_registers(&instruction),
-                U4::Dec06 => self.process_shift_right(&instruction),
-                U4::Dec07 => self.process_subn_registers(&instruction),
-                U4::Dec14 => self.process_shift_left(&instruction),
-                _ => panic!("Unexpected instruction"),
-            },
+            (0x1, _, _, _) => self.process_jump(&instruction),
 
-            u4::U4::Dec09 => self.process_skip_if_not_equal_register(&instruction),
-            u4::U4::Dec10 => self.process_set_register_i_to_address(&instruction),
-            u4::U4::Dec11 => self.process_move_program_counter(&instruction),
-            u4::U4::Dec12 => self.process_generate_random_number(&instruction),
-            u4::U4::Dec13 => self.process_display_sprite(&instruction),
+            (0x2, _, _, _) => self.process_call_subroutine(&instruction),
 
-            u4::U4::Dec14 => match get_last_nibble(&instruction) {
-                U4::Dec01 => self.process_skip_if_key_not_pressed(&instruction),
-                U4::Dec14 => self.process_skip_if_key_pressed(&instruction),
-                _ => panic!("Unexpected instruction "),
-            },
+            (0x3, _, _, _) => self.process_skip_if_equal_byte(&instruction),
 
-            u4::U4::Dec15 => match get_third_nibble(&instruction) {
-                //
-                U4::Dec00 => match get_last_nibble(&instruction) {
-                    U4::Dec07 => self.process_set_vx_to_delay_timer(&instruction),
-                    U4::Dec10 => self.process_store_key_press(&instruction),
-                    _ => panic!("Unexpected instruction"),
-                },
-                U4::Dec01 => match get_last_nibble(&instruction) {
-                    U4::Dec05 => self.process_set_delay_timer(&instruction),
-                    U4::Dec08 => self.process_set_sound_timer(&instruction),
-                    U4::Dec14 => self.process_add_vx_to_i(&instruction),
-                    _ => panic!("Unexpected instruction"),
-                },
-                U4::Dec02 => self.process_set_i_to_sprite_address(&instruction),
-                U4::Dec03 => self.process_store_vx_as_bsd_in_memory(&instruction),
-                U4::Dec05 => self.process_store_registers_in_memory(&instruction),
-                U4::Dec06 => self.process_load_registers_from_memory(&instruction),
-                _ => panic!("Unexpected instruction"),
-            },
+            (0x4, _, _, _) => self.process_skip_if_not_equal_byte(&instruction),
+
+            (0x5, _, _, _) => self.process_skip_if_equal_register(&instruction),
+
+            (0x6, _, _, _) => self.process_set_register(&instruction),
+
+            (0x7, _, _, _) => self.process_add_byte(&instruction),
+
+            (0x8, _, _, 0x0) => self.process_copy_register_value(&instruction),
+            (0x8, _, _, 0x1) => self.process_or_registers(&instruction),
+            (0x8, _, _, 0x2) => self.process_and_registers(&instruction),
+            (0x8, _, _, 0x3) => self.process_xor_registers(&instruction),
+            (0x8, _, _, 0x4) => self.process_add_registers(&instruction),
+            (0x8, _, _, 0x5) => self.process_sub_registers(&instruction),
+            (0x8, _, _, 0x6) => self.process_shift_right(&instruction),
+            (0x8, _, _, 0x7) => self.process_subn_registers(&instruction),
+            (0x8, _, _, 0xE) => self.process_shift_left(&instruction),
+
+            (0x9, _, _, _) => self.process_skip_if_not_equal_register(&instruction),
+
+            (0xA, _, _, _) => self.process_set_register_i_to_address(&instruction),
+
+            (0xB, _, _, _) => self.process_move_program_counter(&instruction),
+
+            (0xC, _, _, _) => self.process_generate_random_number(&instruction),
+
+            (0xD, _, _, _) => self.process_display_sprite(&instruction),
+
+            (0xE, _, _, 0x1) => self.process_skip_if_key_not_pressed(&instruction),
+            (0xE, _, _, 0xE) => self.process_skip_if_key_pressed(&instruction),
+
+            (0xF, _, 0x0, 0x7) => self.process_set_vx_to_delay_timer(&instruction),
+            (0xF, _, 0x0, 0xA) => self.process_store_key_press(&instruction),
+            (0xF, _, 0x1, 0x5) => self.process_set_delay_timer(&instruction),
+            (0xF, _, 0x1, 0x8) => self.process_set_sound_timer(&instruction),
+            (0xF, _, 0x1, 0xE) => self.process_add_vx_to_i(&instruction),
+
+            (0xF, _, 0x2, _) => self.process_set_i_to_sprite_address(&instruction),
+            (0xF, _, 0x3, _) => self.process_store_vx_as_bsd_in_memory(&instruction),
+            (0xF, _, 0x5, _) => self.process_store_registers_in_memory(&instruction),
+            (0xF, _, 0x6, _) => self.process_load_registers_from_memory(&instruction),
+            _ => panic!("unexpected instruction"),
         };
     }
 
-    fn process_return_from_subroutine(&mut self, _instruction: &Stack) {
+    fn process_return_from_subroutine(&mut self, _instruction: &Instruction) {
         let stack_pointer = self
             .registers
             .stack_pointer
@@ -223,20 +202,20 @@ impl<'a> Cpu<'a> {
             .set_to_address(*return_address);
     }
 
-    fn process_clear_display(&mut self, _instruction: &Stack) {
+    fn process_clear_display(&mut self, _instruction: &Instruction) {
         self.renderer.borrow_mut().clear_display();
         self.registers.program_counter.increment();
     }
 
     /// The value of delay timer register is placed into Vx.
-    fn process_set_vx_to_delay_timer(&mut self, instruction: &Stack) {
-        let x = get_x_nibble(instruction) as usize;
+    fn process_set_vx_to_delay_timer(&mut self, instruction: &Instruction) {
+        let x = instruction.x() as usize;
         self.registers.general_registers[x] = self.registers.delay_timer;
         self.registers.program_counter.increment();
     }
 
-    fn process_skip_if_key_not_pressed(&mut self, instruction: &Stack) {
-        let x = get_x_nibble(instruction) as usize;
+    fn process_skip_if_key_not_pressed(&mut self, instruction: &Instruction) {
+        let x = instruction.x() as usize;
         let vx = self.registers.general_registers[x];
         if !self.keyboard.borrow().is_key_pressed_or_held(&vx) {
             self.registers.program_counter.skip_instruction();
@@ -245,8 +224,8 @@ impl<'a> Cpu<'a> {
         }
     }
 
-    fn process_skip_if_key_pressed(&mut self, instruction: &Stack) {
-        let x = get_x_nibble(instruction) as usize;
+    fn process_skip_if_key_pressed(&mut self, instruction: &Instruction) {
+        let x = instruction.x() as usize;
         let vx = self.registers.general_registers[x];
         if self.keyboard.borrow().is_key_pressed_or_held(&vx) {
             self.registers.program_counter.skip_instruction();
@@ -257,10 +236,10 @@ impl<'a> Cpu<'a> {
 
     /// The interpreter reads n bytes from memory, starting at the address stored in I.
     /// These bytes are then displayed as sprites on screen at coordinates (Vx, Vy)
-    fn process_display_sprite(&mut self, instruction: &Stack) {
-        let x = get_x_nibble(instruction) as usize;
-        let y = get_y_nibble(instruction) as usize;
-        let n = get_last_nibble(instruction);
+    fn process_display_sprite(&mut self, instruction: &Instruction) {
+        let x = instruction.x() as usize;
+        let y = instruction.y() as usize;
+        let n = instruction.fourth_nibble();
 
         let vx = self.registers.general_registers[x];
         let vy = self.registers.general_registers[y];
@@ -275,17 +254,17 @@ impl<'a> Cpu<'a> {
     /// The interpreter generates a random number from 0 to 255,
     /// which is then ANDed with the value kk. The results are stored in Vx.
     /// See instruction 8xy2 for more information on AND.
-    fn process_generate_random_number(&mut self, instruction: &Stack) {
-        let kk = get_kk_byte(instruction);
-        let x = get_x_nibble(instruction) as usize;
+    fn process_generate_random_number(&mut self, instruction: &Instruction) {
+        let kk = instruction.kk();
+        let x = instruction.x() as usize;
         let random_num: u8 = rand::random();
         self.registers.general_registers[x] = random_num & kk;
         self.registers.program_counter.increment();
     }
 
     /// The program counter is set to nnn plus the value of V0.
-    fn process_move_program_counter(&mut self, instruction: &Stack) {
-        let nnn = get_nnn_address(instruction);
+    fn process_move_program_counter(&mut self, instruction: &Instruction) {
+        let nnn = instruction.nnn();
         let v0 = self.registers.general_registers[0];
         self.registers
             .program_counter
@@ -293,15 +272,15 @@ impl<'a> Cpu<'a> {
     }
 
     /// The value of register I is set to nnn.
-    fn process_set_register_i_to_address(&mut self, instruction: &Stack) {
-        let nnn = get_nnn_address(instruction);
+    fn process_set_register_i_to_address(&mut self, instruction: &Instruction) {
+        let nnn = instruction.nnn();
         self.registers.i = nnn;
         self.registers.program_counter.increment();
     }
 
-    fn process_skip_if_not_equal_register(&mut self, instruction: &Stack) {
-        let x = get_x_nibble(instruction) as usize;
-        let y = get_y_nibble(instruction) as usize;
+    fn process_skip_if_not_equal_register(&mut self, instruction: &Instruction) {
+        let x = instruction.x() as usize;
+        let y = instruction.y() as usize;
         let vx = self.registers.general_registers[x];
         let vy = self.registers.general_registers[y];
         if vx != vy {
@@ -310,9 +289,9 @@ impl<'a> Cpu<'a> {
             self.registers.program_counter.increment();
         }
     }
-    fn process_skip_if_equal_register(&mut self, instruction: &Stack) {
-        let x = get_x_nibble(instruction) as usize;
-        let y = get_y_nibble(instruction) as usize;
+    fn process_skip_if_equal_register(&mut self, instruction: &Instruction) {
+        let x = instruction.x() as usize;
+        let y = instruction.y() as usize;
         let vx = self.registers.general_registers[x];
         let vy = self.registers.general_registers[y];
         if vx == vy {
@@ -323,36 +302,35 @@ impl<'a> Cpu<'a> {
     }
 
     /// Add byte kk to the register x. No carry flag is set in case of an overflow
-    fn process_add_byte(&mut self, instruction: &Stack) {
-        let x = get_x_nibble(instruction);
-        let byte = get_kk_byte(instruction);
-        let (result, _overflow) =
-            self.registers.general_registers[x as usize].overflowing_add(byte);
-        self.registers.general_registers[x as usize] = result;
+    fn process_add_byte(&mut self, instruction: &Instruction) {
+        let x = instruction.x() as usize;
+        let byte = instruction.kk();
+        let (result, _overflow) = self.registers.general_registers[x].overflowing_add(byte);
+        self.registers.general_registers[x] = result;
         self.registers.program_counter.increment();
     }
 
-    fn process_set_register(&mut self, instruction: &Stack) {
-        let register_address = get_x_nibble(instruction);
-        let byte = get_kk_byte(instruction);
-        self.registers.general_registers[register_address as usize] = byte;
+    fn process_set_register(&mut self, instruction: &Instruction) {
+        let register_address = instruction.x() as usize;
+        let byte = instruction.kk();
+        self.registers.general_registers[register_address] = byte;
         self.registers.program_counter.increment();
     }
 
-    fn process_skip_if_not_equal_byte(&mut self, instruction: &Stack) {
-        let x = get_x_nibble(instruction);
-        let kk = get_kk_byte(instruction);
+    fn process_skip_if_not_equal_byte(&mut self, instruction: &Instruction) {
+        let x = instruction.x() as usize;
+        let kk = instruction.kk();
 
-        if self.registers.general_registers[x as usize] != kk {
+        if self.registers.general_registers[x] != kk {
             self.registers.program_counter.skip_instruction();
         } else {
             self.registers.program_counter.increment();
         }
     }
 
-    fn process_skip_if_equal_byte(&mut self, instruction: &Stack) {
-        let x = get_x_nibble(instruction);
-        let kk = get_kk_byte(instruction);
+    fn process_skip_if_equal_byte(&mut self, instruction: &Instruction) {
+        let x = instruction.x();
+        let kk = instruction.kk();
 
         if self.registers.general_registers[x as usize] == kk {
             self.registers.program_counter.skip_instruction();
@@ -361,7 +339,7 @@ impl<'a> Cpu<'a> {
         }
     }
 
-    fn process_call_subroutine(&mut self, instruction: &Stack) {
+    fn process_call_subroutine(&mut self, instruction: &Instruction) {
         self.registers.stack_pointer = if self.registers.stack_pointer.is_none() {
             Some(0)
         } else {
@@ -371,19 +349,19 @@ impl<'a> Cpu<'a> {
         self.stack[self.registers.stack_pointer.expect("Stack pointer exists") as usize] =
             return_address;
 
-        let address = get_nnn_address(instruction);
+        let address = instruction.nnn();
         self.registers.program_counter.set_to_address(address);
     }
 
-    fn process_jump(&mut self, instruction: &Stack) {
-        let address = get_nnn_address(instruction);
+    fn process_jump(&mut self, instruction: &Instruction) {
+        let address = instruction.nnn();
         self.registers.program_counter.set_to_address(address);
     }
 
     /// Stores the value of register Vy in register Vx.
-    fn process_copy_register_value(&mut self, instruction: &Stack) {
-        let x = get_x_nibble(instruction);
-        let y = get_y_nibble(instruction);
+    fn process_copy_register_value(&mut self, instruction: &Instruction) {
+        let x = instruction.x();
+        let y = instruction.y();
         self.registers.general_registers[x as usize] = self.registers.general_registers[y as usize];
         self.registers.program_counter.increment();
     }
@@ -391,9 +369,9 @@ impl<'a> Cpu<'a> {
     /// Performs a bitwise OR on the values of Vx and Vy, then stores the result in Vx.
     /// A bitwise OR compares the corresponding bits from two values, and if either bit is 1,
     /// then the same bit in the result is also 1. Otherwise, it is 0.
-    fn process_or_registers(&mut self, instruction: &Stack) {
-        let x = get_x_nibble(instruction);
-        let y = get_y_nibble(instruction);
+    fn process_or_registers(&mut self, instruction: &Instruction) {
+        let x = instruction.x();
+        let y = instruction.y();
         self.registers.general_registers[x as usize] |=
             self.registers.general_registers[y as usize];
         self.registers.program_counter.increment();
@@ -402,17 +380,17 @@ impl<'a> Cpu<'a> {
     /// Performs a bitwise AND on the values of Vx and Vy, then stores the result in Vx.
     /// A bitwise AND compares the corresponding bits from two values,
     /// and if both bits are 1, then the same bit in the result is also 1. Otherwise, it is 0.
-    fn process_and_registers(&mut self, instruction: &Stack) {
-        let x = get_x_nibble(instruction);
-        let y = get_y_nibble(instruction);
+    fn process_and_registers(&mut self, instruction: &Instruction) {
+        let x = instruction.x();
+        let y = instruction.y();
         self.registers.general_registers[x as usize] &=
             self.registers.general_registers[y as usize];
         self.registers.program_counter.increment();
     }
 
-    fn process_xor_registers(&mut self, instruction: &Stack) {
-        let x = get_x_nibble(instruction);
-        let y = get_y_nibble(instruction);
+    fn process_xor_registers(&mut self, instruction: &Instruction) {
+        let x = instruction.x();
+        let y = instruction.y();
         self.registers.general_registers[x as usize] ^=
             self.registers.general_registers[y as usize];
         self.registers.program_counter.increment();
@@ -420,9 +398,9 @@ impl<'a> Cpu<'a> {
 
     /// The values of Vx and Vy are added together. If the result is greater than 8 bits (i.e., > 255,) VF is set to 1,
     /// otherwise 0. Only the lowest 8 bits of the result are kept, and stored in Vx.
-    fn process_add_registers(&mut self, instruction: &Stack) {
-        let x = get_x_nibble(instruction) as usize;
-        let y = get_y_nibble(instruction) as usize;
+    fn process_add_registers(&mut self, instruction: &Instruction) {
+        let x = instruction.x() as usize;
+        let y = instruction.y() as usize;
         let (result, overflow) = (self.registers.general_registers[x])
             .overflowing_add(self.registers.general_registers[y]);
 
@@ -431,9 +409,9 @@ impl<'a> Cpu<'a> {
         self.registers.program_counter.increment();
     }
 
-    fn process_sub_registers(&mut self, instruction: &Stack) {
-        let x = get_x_nibble(instruction) as usize;
-        let y = get_y_nibble(instruction) as usize;
+    fn process_sub_registers(&mut self, instruction: &Instruction) {
+        let x = instruction.x() as usize;
+        let y = instruction.y() as usize;
         let vx = self.registers.general_registers[x];
         let vy = self.registers.general_registers[y];
 
@@ -443,9 +421,9 @@ impl<'a> Cpu<'a> {
         self.registers.program_counter.increment();
     }
 
-    fn process_shift_right(&mut self, instruction: &Stack) {
-        let x = get_x_nibble(instruction) as usize;
-        let y = get_y_nibble(instruction) as usize;
+    fn process_shift_right(&mut self, instruction: &Instruction) {
+        let x = instruction.x() as usize;
+        let y = instruction.y() as usize;
         let vy = self.registers.general_registers[y];
 
         self.registers.general_registers[x] = vy >> 1;
@@ -453,9 +431,9 @@ impl<'a> Cpu<'a> {
         self.registers.program_counter.increment();
     }
 
-    fn process_subn_registers(&mut self, instruction: &Stack) {
-        let x = get_x_nibble(instruction) as usize;
-        let y = get_y_nibble(instruction) as usize;
+    fn process_subn_registers(&mut self, instruction: &Instruction) {
+        let x = instruction.x() as usize;
+        let y = instruction.y() as usize;
         let vx = self.registers.general_registers[x];
         let vy = self.registers.general_registers[y];
 
@@ -465,9 +443,9 @@ impl<'a> Cpu<'a> {
         self.registers.program_counter.increment();
     }
 
-    fn process_shift_left(&mut self, instruction: &Stack) {
-        let x = get_x_nibble(instruction) as usize;
-        let y = get_y_nibble(instruction) as usize;
+    fn process_shift_left(&mut self, instruction: &Instruction) {
+        let x = instruction.x() as usize;
+        let y = instruction.y() as usize;
         let vy = self.registers.general_registers[y];
 
         self.registers.general_registers[x] = vy << 1;
@@ -476,10 +454,10 @@ impl<'a> Cpu<'a> {
     }
 
     /// All execution stops until a key is pressed, then the value of that key is stored in Vx.
-    fn process_store_key_press(&mut self, instruction: &Stack) {
+    fn process_store_key_press(&mut self, instruction: &Instruction) {
         let pressed_key = self.keyboard.borrow().get_pressed_key();
         if let Some(chip_8_key) = pressed_key {
-            let x = get_x_nibble(instruction) as usize;
+            let x = instruction.x() as usize;
             self.registers.general_registers[x] = chip_8_key;
             self.registers.program_counter.increment();
         }
@@ -488,24 +466,24 @@ impl<'a> Cpu<'a> {
     }
 
     /// Delay timer is set equal to the value of Vx.
-    fn process_set_delay_timer(&mut self, instruction: &Stack) {
-        let x = get_x_nibble(instruction) as usize;
+    fn process_set_delay_timer(&mut self, instruction: &Instruction) {
+        let x = instruction.x() as usize;
         let vx = self.registers.general_registers[x];
         self.registers.delay_timer = vx;
         self.registers.program_counter.increment();
     }
 
     /// Sound timer is set equal to the value of Vx.
-    fn process_set_sound_timer(&mut self, instruction: &Stack) {
-        let x = get_x_nibble(instruction) as usize;
+    fn process_set_sound_timer(&mut self, instruction: &Instruction) {
+        let x = instruction.x() as usize;
         let vx = self.registers.general_registers[x];
         self.registers.sound_timer = vx;
         self.registers.program_counter.increment();
     }
 
     /// The values of I and Vx are added, and the results are stored in I.
-    fn process_add_vx_to_i(&mut self, instruction: &Stack) {
-        let x = get_x_nibble(instruction) as usize;
+    fn process_add_vx_to_i(&mut self, instruction: &Instruction) {
+        let x = instruction.x() as usize;
         let vx = self.registers.general_registers[x];
         self.registers.i += vx as u16;
         self.registers.program_counter.increment();
@@ -513,8 +491,8 @@ impl<'a> Cpu<'a> {
 
     /// The value of I is set to the location for the hexadecimal sprite corresponding to the value of Vx.
     /// See section 2.4, Display, for more information on the Chip-8 hexadecimal font.
-    fn process_set_i_to_sprite_address(&mut self, instruction: &Stack) {
-        let x = get_x_nibble(instruction) as usize;
+    fn process_set_i_to_sprite_address(&mut self, instruction: &Instruction) {
+        let x = instruction.x() as usize;
         let vx = self.registers.general_registers[x];
         let sprite_address = (vx * 5) as u16; // a sprite is 5 bytes in size
         self.registers.i = sprite_address;
@@ -523,8 +501,8 @@ impl<'a> Cpu<'a> {
 
     /// Takes the decimal value of Vx, and places the hundreds digit in memory at location in I,
     /// the tens digit at location I+1, and the ones digit at location I+2
-    fn process_store_vx_as_bsd_in_memory(&mut self, instruction: &Stack) {
-        let x = get_x_nibble(instruction) as usize;
+    fn process_store_vx_as_bsd_in_memory(&mut self, instruction: &Instruction) {
+        let x = instruction.x() as usize;
         let vx = self.registers.general_registers[x];
 
         let bcd_representation = [(vx / 100) % 10, (vx / 10) % 10, vx % 10];
@@ -534,8 +512,8 @@ impl<'a> Cpu<'a> {
         self.registers.program_counter.increment();
     }
 
-    fn process_store_registers_in_memory(&mut self, instruction: &Stack) {
-        let x = get_x_nibble(instruction) as usize;
+    fn process_store_registers_in_memory(&mut self, instruction: &Instruction) {
+        let x = instruction.x() as usize;
         //let vx = self.registers.general_registers[x];
 
         let registers = self.registers.general_registers;
@@ -544,8 +522,8 @@ impl<'a> Cpu<'a> {
         self.registers.program_counter.increment();
     }
 
-    fn process_load_registers_from_memory(&mut self, instruction: &Stack) {
-        let x = get_x_nibble(instruction) as usize;
+    fn process_load_registers_from_memory(&mut self, instruction: &Instruction) {
+        let x = instruction.x() as usize;
         //let vx = self.registers.general_registers[x];
 
         let from = self.registers.i;
@@ -556,40 +534,4 @@ impl<'a> Cpu<'a> {
         }
         self.registers.program_counter.increment();
     }
-}
-
-fn get_nnn_address(instruction: &Stack) -> u16 {
-    let mut address: u16 = (instruction.get(1).unwrap()) as u16;
-    address <<= 4;
-    address |= instruction.get(2).unwrap() as u16;
-    address <<= 4;
-    address |= instruction.get(3).unwrap() as u16;
-    return address;
-}
-
-fn get_x_nibble(instruction: &Stack) -> U4 {
-    return instruction.get(1).unwrap();
-}
-
-fn get_y_nibble(instruction: &Stack) -> U4 {
-    return instruction.get(2).unwrap();
-}
-
-fn get_last_nibble(instruction: &Stack) -> U4 {
-    return instruction.get(3).unwrap();
-}
-
-fn get_third_nibble(instruction: &Stack) -> U4 {
-    return instruction.get(2).unwrap();
-}
-
-fn get_second_nibble(instruction: &Stack) -> U4 {
-    return instruction.get(1).unwrap();
-}
-
-fn get_kk_byte(instruction: &Stack) -> u8 {
-    let mut address: u8 = (instruction.get(2).unwrap()) as u8;
-    address <<= 4;
-    address |= instruction.get(3).unwrap() as u8;
-    return address;
 }

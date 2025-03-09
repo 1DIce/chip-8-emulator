@@ -2,7 +2,7 @@
 needless_return = "allow"
 
 [package]
-name = "chip-8-emulator"
+name = "chip_8_emulator"
 version = "0.1.0"
 edition = "2021"
 
