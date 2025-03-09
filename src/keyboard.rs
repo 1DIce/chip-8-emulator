@@ -44,9 +44,9 @@ fn to_chip_8_key(key: &str) -> Option<u8> {
     }
 
     let character = key.chars().next().expect("string is empty") as u8;
-    if character >= 48 && character <= 57 {
+    if (48..=57).contains(&character) {
         return Some(character - 48);
-    } else if character >= 65 && character <= 70 {
+    } else if (65..=70).contains(&character) {
         return Some(character - 55);
     } else {
         println!("Unexpected input character {}", key);

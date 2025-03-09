@@ -1,7 +1,6 @@
 pub const SCREEN_WIDTH: u32 = 64;
 pub const SCREEN_HEIGHT: u32 = 32;
 
-const SPRITE_SIZE_BYTES: usize = 5;
 const SPRITE_WIDTH: usize = 8;
 
 pub struct Renderer {
@@ -25,16 +24,21 @@ impl Renderer {
 
     pub fn draw_sprite(&mut self, sprite: &[u8], target_x: u8, target_y: u8) -> bool {
         let mut pixel_erased = false;
+        // wrapping around the display when the target location is out of bound
+        let normalized_x = target_x as usize % SCREEN_WIDTH as usize;
+        let normalized_y = target_y as usize % SCREEN_HEIGHT as usize;
         for (sprite_y, sprite_line_byte) in sprite.iter().enumerate() {
             for bit_index in (0..SPRITE_WIDTH).rev() {
+                let pixel_x = normalized_x + SPRITE_WIDTH - 1 - bit_index;
+                let pixel_y = normalized_y + sprite_y;
+                if pixel_x >= SCREEN_WIDTH as usize || pixel_y >= SCREEN_HEIGHT as usize {
+                    // the pixel would be out of screen there in wrapping around in this case
+                    continue;
+                }
+
                 let bit_mask = 1 << bit_index;
                 let masked = sprite_line_byte & bit_mask;
                 let bit_set = masked != 0;
-
-                // wrapping around the display when the target location is out of bound
-                let pixel_x =
-                    (target_x as usize + (SPRITE_WIDTH - 1 - bit_index)) % SCREEN_WIDTH as usize;
-                let pixel_y = (target_y as usize + sprite_y) % SCREEN_HEIGHT as usize;
                 let pixel = self.display_content2d[pixel_y][pixel_x];
                 if pixel && pixel != bit_set {
                     pixel_erased = true
@@ -47,8 +51,8 @@ impl Renderer {
 
     pub fn update_pixels(&self, frame: &mut [u8]) {
         for (i, frame_rgba) in frame.chunks_exact_mut(4).enumerate() {
-            let x = (i % SCREEN_WIDTH as usize);
-            let y = (i / SCREEN_WIDTH as usize);
+            let x = i % SCREEN_WIDTH as usize;
+            let y = i / SCREEN_WIDTH as usize;
 
             let rgba = if self.display_content2d[y][x] {
                 [0x5e, 0x48, 0xe8, 0xff]

@@ -1,6 +1,3 @@
-use anyhow::{anyhow, Result};
-use std::{fs, usize};
-
 const MEMORY_SIZE: usize = 4096;
 
 pub struct Memory {

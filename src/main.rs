@@ -46,18 +46,15 @@ fn main() {
     //let expected_cycles = 39;
     //let program = load_rom("./roms/2-ibm-logo.ch8").expect("rom should be loaded");
     //let expected_cycles = 20;
-    let program = load_rom("./roms/3-corax+.ch8").expect("rom should be loaded");
-    let expected_cycles = 300;
+    //let program = load_rom("./roms/3-corax+.ch8").expect("rom should be loaded");
+    //let expected_cycles = 10000;
+    let program = load_rom("./roms/BLINKY").expect("rom should be loaded");
+    let expected_cycles = 1000000000;
     cpu.load_program_into_memory(&program);
 
-    let mut timer_started = Instant::now();
     let mut cycle_count = 0;
 
     let res = event_loop.run(|event, elwt| {
-        if timer_started.elapsed().as_millis() >= (1000 / 60) {
-            cpu.progress_timers();
-            timer_started = Instant::now();
-        }
         if cycle_count < expected_cycles {
             cpu.run_cycle();
         }
