@@ -1,22 +1,14 @@
-use anyhow::{anyhow, Error, Result};
+use anyhow::{anyhow, Result};
+use minifb::{Key, KeyRepeat, Scale, ScaleMode, Window, WindowOptions};
 use std::{
     cell::RefCell,
-    env::{self, args},
-    fs, os,
-    path::Path,
-    time::Instant,
+    env::{self},
+    fs,
 };
 
 use cpu::Cpu;
 use keyboard::Keyboard;
-use pixels::{Pixels, SurfaceTexture};
 use renderer::{Renderer, SCREEN_HEIGHT, SCREEN_WIDTH};
-use winit::{
-    dpi::LogicalSize,
-    event::{Event, WindowEvent},
-    event_loop::{ControlFlow, EventLoop},
-    window::Window,
-};
 
 mod cpu;
 mod instruction;
@@ -33,25 +25,32 @@ fn main() -> Result<()> {
         load_rom("./roms/1-chip8-logo.ch8")?
     };
 
-    let event_loop = EventLoop::new().expect("Should create EventLoop");
-    // ControlFlow::Poll continuously runs the event loop, even if the OS hasn't
-    // dispatched any events. This is ideal for games and similar applications.
-    event_loop.set_control_flow(ControlFlow::Poll);
-    let size = LogicalSize::new(SCREEN_WIDTH * 16, SCREEN_HEIGHT * 16);
+    let mut window = Window::new(
+        "Chip-8 Emulator",
+        SCREEN_WIDTH,
+        SCREEN_HEIGHT,
+        WindowOptions {
+            resize: true,
+            scale: Scale::X16,
+            scale_mode: ScaleMode::AspectRatioStretch,
+            ..WindowOptions::default()
+        },
+    )?;
+    //let size = LogicalSize::new(SCREEN_WIDTH * 16, SCREEN_HEIGHT * 16);
 
-    let window_attributes = Window::default_attributes()
-        .with_title("Chip-8 Emulator")
-        .with_inner_size(size)
-        .with_min_inner_size(size);
-    let window = event_loop
-        .create_window(window_attributes)
-        .expect("Should create window");
-
-    let mut pixels = {
-        let window_size = window.inner_size();
-        let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
-        Pixels::new(SCREEN_WIDTH, SCREEN_HEIGHT, surface_texture).expect("Should create new pixels")
-    };
+    //let window_attributes = Window::default_attributes()
+    //    .with_title("Chip-8 Emulator")
+    //    .with_inner_size(size)
+    //    .with_min_inner_size(size);
+    //let window = event_loop
+    //    .create_window(window_attributes)
+    //    .expect("Should create window");
+    //
+    //let mut pixels = {
+    //    //let window_size = window.inner_size();
+    //    let surface_texture = SurfaceTexture::new(SCREEN_WIDTH, SCREEN_HEIGHT, &window);
+    //    Pixels::new(SCREEN_WIDTH, SCREEN_HEIGHT, surface_texture).expect("Should create new pixels")
+    //};
 
     let renderer = RefCell::new(Renderer::new());
     let keyboard = RefCell::new(Keyboard::new());
@@ -61,7 +60,6 @@ fn main() -> Result<()> {
     //let expected_cycles = 39;
     //let program = load_rom("./roms/2-ibm-logo.ch8").expect("rom should be loaded");
     //let expected_cycles = 20;
-    let program = load_rom("./roms/3-corax+.ch8").expect("rom should be loaded");
     let expected_cycles = 10000;
     //let program = load_rom("./roms/BLINKY").expect("rom should be loaded");
     //let expected_cycles = 1000000000;
@@ -69,32 +67,21 @@ fn main() -> Result<()> {
 
     let mut cycle_count = 0;
 
-    let res = event_loop.run(|event, elwt| {
+    let mut frame_buffer: [u32; SCREEN_WIDTH * SCREEN_HEIGHT] = [0; SCREEN_WIDTH * SCREEN_HEIGHT];
+    while window.is_open() && !window.is_key_down(Key::Escape) {
         if cycle_count < expected_cycles {
             cpu.run_cycle();
         }
         cycle_count += 1;
 
-        if let Event::WindowEvent { window_id, event } = event {
-            match event {
-                WindowEvent::RedrawRequested => {
-                    renderer.borrow_mut().update_pixels(pixels.frame_mut());
-                    if let Err(err) = pixels.render() {
-                        println!("pixels.render error");
-                        elwt.exit();
-                        return;
-                    }
-                }
-                WindowEvent::KeyboardInput {
-                    device_id,
-                    event,
-                    is_synthetic,
-                } => keyboard.borrow_mut().process_keyboard_event(event),
-                _ => (),
-            }
-        }
-        window.request_redraw();
-    });
+        keyboard
+            .borrow_mut()
+            .process_keyboard_event(window.get_keys_pressed(KeyRepeat::Yes));
+
+        renderer.borrow_mut().update_pixels(&mut frame_buffer);
+        window.update_with_buffer(&frame_buffer, SCREEN_WIDTH, SCREEN_HEIGHT)?;
+    }
+
     return Ok(());
 }
 

@@ -8,7 +8,6 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.96"
-pixels = "0.15.0"
+minifb = "0.28.0"
 rand = "0.9.0"
 u4 = "0.1.2"
-winit = "0.30.9"

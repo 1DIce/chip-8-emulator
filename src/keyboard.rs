@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use winit::{event::KeyEvent, keyboard::Key};
+use minifb::Key;
 
 //const VALID_KEYS: [char; 16] = [
 //    "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "a", "b", "c", "d", "e", "f",
@@ -25,31 +25,21 @@ impl Keyboard {
         return self.pressed_keys.iter().next().cloned();
     }
 
-    pub(crate) fn process_keyboard_event(&mut self, event: KeyEvent) {
-        if let Key::Character(key) = event.logical_key {
-            if let Some(chip_8_key) = to_chip_8_key(key.as_str()) {
-                if event.state.is_pressed() {
-                    self.pressed_keys.insert(chip_8_key);
-                } else {
-                    self.pressed_keys.remove(&chip_8_key);
-                }
+    pub(crate) fn process_keyboard_event(&mut self, pressed: Vec<Key>) {
+        self.pressed_keys.clear();
+        for key in pressed {
+            if let Some(chip_8_key) = to_chip_8_key(key) {
+                self.pressed_keys.insert(chip_8_key);
             }
         }
     }
 }
 
-fn to_chip_8_key(key: &str) -> Option<u8> {
-    if key.len() != 1 {
-        return None;
-    }
-
-    let character = key.chars().next().expect("string is empty") as u8;
-    if (48..=57).contains(&character) {
-        return Some(character - 48);
-    } else if (65..=70).contains(&character) {
-        return Some(character - 55);
+fn to_chip_8_key(key: Key) -> Option<u8> {
+    if key as u8 <= Key::F as u8 {
+        return Some(key as u8);
     } else {
-        println!("Unexpected input character {}", key);
+        println!("Unexpected input character {}", key as u8);
         return None;
     }
 }

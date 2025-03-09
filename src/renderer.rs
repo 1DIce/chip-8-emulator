@@ -1,5 +1,5 @@
-pub const SCREEN_WIDTH: u32 = 64;
-pub const SCREEN_HEIGHT: u32 = 32;
+pub const SCREEN_WIDTH: usize = 64;
+pub const SCREEN_HEIGHT: usize = 32;
 
 const SPRITE_WIDTH: usize = 8;
 
@@ -25,8 +25,8 @@ impl Renderer {
     pub fn draw_sprite(&mut self, sprite: &[u8], target_x: u8, target_y: u8) -> bool {
         let mut pixel_erased = false;
         // wrapping around the display when the target location is out of bound
-        let normalized_x = target_x as usize % SCREEN_WIDTH as usize;
-        let normalized_y = target_y as usize % SCREEN_HEIGHT as usize;
+        let normalized_x = target_x as usize % SCREEN_WIDTH;
+        let normalized_y = target_y as usize % SCREEN_HEIGHT;
         for (sprite_y, sprite_line_byte) in sprite.iter().enumerate() {
             for bit_index in (0..SPRITE_WIDTH).rev() {
                 let pixel_x = normalized_x + SPRITE_WIDTH - 1 - bit_index;
@@ -49,18 +49,18 @@ impl Renderer {
         return pixel_erased;
     }
 
-    pub fn update_pixels(&self, frame: &mut [u8]) {
-        for (i, frame_rgba) in frame.chunks_exact_mut(4).enumerate() {
+    pub fn update_pixels(&self, frame_buffer: &mut [u32]) {
+        for (i, frame_rgb) in frame_buffer.iter_mut().enumerate() {
             let x = i % SCREEN_WIDTH as usize;
             let y = i / SCREEN_WIDTH as usize;
 
-            let rgba = if self.display_content2d[y][x] {
-                [0x5e, 0x48, 0xe8, 0xff]
+            let rgb: u32 = if self.display_content2d[y][x] {
+                0x5e << 16 | 0x48 << 8 | 0xe8
             } else {
-                [0x48, 0xb2, 0xe8, 0xff]
+                0x48 << 16 | 0xb2 << 8 | 0xe8
             };
 
-            frame_rgba.copy_from_slice(&rgba);
+            *frame_rgb = rgb;
         }
     }
 }
