@@ -2,6 +2,7 @@ use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::time::Instant;
 
+use crate::audio::Audio;
 use crate::instruction::Instruction;
 use crate::keyboard::Keyboard;
 use crate::memory::Memory;
@@ -35,7 +36,9 @@ pub struct Cpu<'a> {
 
     keyboard: &'a RefCell<Keyboard>,
 
-    run_timer: Option<Instant>,
+    audio: Audio,
+
+    time_since_timer_update: Option<Instant>,
 }
 
 impl<'a> Cpu<'a> {
@@ -53,7 +56,8 @@ impl<'a> Cpu<'a> {
             memory: Memory::new(),
             renderer,
             keyboard,
-            run_timer: None,
+            time_since_timer_update: None,
+            audio: Audio::new(),
         };
     }
 
@@ -61,22 +65,19 @@ impl<'a> Cpu<'a> {
         self.memory.load_program(program)
     }
 
-    fn progress_timers(&mut self) {
-        if self.registers.delay_timer > 0 {
-            self.registers.delay_timer -= 1;
-        }
-        if self.registers.sound_timer > 0 {
-            self.registers.sound_timer -= 1;
-        }
-    }
-
     pub fn run_cycle(&mut self) {
-        if self.run_timer.is_none() {
-            self.run_timer = Some(Instant::now());
+        if self.time_since_timer_update.is_none() {
+            self.time_since_timer_update = Some(Instant::now());
         }
-        if self.run_timer.expect("timer exists").elapsed().as_millis() >= (1000 / 60) {
-            self.progress_timers();
-            self.run_timer = Some(Instant::now());
+        if self
+            .time_since_timer_update
+            .expect("timer exists")
+            .elapsed()
+            .as_millis()
+            >= (1000 / 60)
+        {
+            self.progress_timer_registers();
+            self.time_since_timer_update = Some(Instant::now());
         }
 
         let mut instruction = [0, 0];
@@ -84,10 +85,22 @@ impl<'a> Cpu<'a> {
             self.memory
                 .read_bytes(self.registers.program_counter.address(), 2),
         );
-        self.process_instructions(&instruction);
+        self.evaluate_instructions(&instruction);
     }
 
-    fn process_instructions(&mut self, instruction_bytes: &[u8; 2]) {
+    fn progress_timer_registers(&mut self) {
+        if self.registers.delay_timer > 0 {
+            self.registers.delay_timer -= 1;
+        }
+        if self.registers.sound_timer > 0 {
+            self.audio.play(self.registers.sound_timer);
+            self.registers.sound_timer -= 1;
+        } else {
+            self.audio.stop();
+        }
+    }
+
+    fn evaluate_instructions(&mut self, instruction_bytes: &[u8; 2]) {
         let instruction = Instruction::new(instruction_bytes);
 
         print!("Instruction: ");
@@ -113,8 +126,8 @@ impl<'a> Cpu<'a> {
             (0x7, _, _, _) => self.process_add_byte(&instruction),
 
             (0x8, _, _, 0x0) => self.process_copy_register_value(&instruction),
-            (0x8, _, _, 0x1) => self.process_or_registers(&instruction),
             (0x8, _, _, 0x2) => self.process_and_registers(&instruction),
+            (0x8, _, _, 0x1) => self.process_or_registers(&instruction),
             (0x8, _, _, 0x3) => self.process_xor_registers(&instruction),
             (0x8, _, _, 0x4) => self.process_add_registers(&instruction),
             (0x8, _, _, 0x5) => self.process_sub_registers(&instruction),

@@ -10,6 +10,7 @@ use cpu::Cpu;
 use keyboard::Keyboard;
 use renderer::{Renderer, SCREEN_HEIGHT, SCREEN_WIDTH};
 
+mod audio;
 mod cpu;
 mod instruction;
 mod keyboard;
