@@ -144,7 +144,8 @@ impl Cpu {
 
             (0xC, _, _, _) => self.exec_generate_random_number(&instruction),
 
-            (0xD, _, _, _) => self.exec_display_sprite(&instruction),
+            (0xD, _, _, 0x0) => self.ignore_instruction(),
+            (0xD, _, _, _) => self.exec_display_sprite_8xN(&instruction),
 
             (0xE, _, _, 0x1) => self.exec_skip_if_key_not_pressed(&instruction),
             (0xE, _, _, 0xE) => self.exec_skip_if_key_pressed(&instruction),
@@ -216,7 +217,7 @@ impl Cpu {
 
     /// The interpreter reads n bytes from memory, starting at the address stored in I.
     /// These bytes are then displayed as sprites on screen at coordinates (Vx, Vy)
-    fn exec_display_sprite(&mut self, instruction: &Instruction) {
+    fn exec_display_sprite_8xN(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
         let y = instruction.y() as usize;
         let n = instruction.fourth_nibble();
@@ -226,7 +227,7 @@ impl Cpu {
         let i = self.registers.i;
         let sprite = self.memory.read_bytes(i, n as u16);
 
-        let pixel_erased = self.renderer.borrow_mut().draw_sprite(sprite, vx, vy);
+        let pixel_erased = self.renderer.draw_sprite(sprite, vx, vy);
         self.registers.general_registers[CARRY_REG_ADDRESS] = if pixel_erased { 1 } else { 0 };
         self.registers.program_counter.increment();
     }
@@ -487,7 +488,6 @@ impl Cpu {
 
         let bcd_representation = [(vx / 100) % 10, (vx / 10) % 10, vx % 10];
         self.memory
-            .borrow_mut()
             .write_bytes(self.registers.i, &bcd_representation);
         self.registers.program_counter.increment();
     }

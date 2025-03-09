@@ -43,11 +43,12 @@ impl Renderer {
                 let bit_mask = 1 << bit_index;
                 let masked = sprite_line_byte & bit_mask;
                 let bit_set = masked != 0;
-                let pixel = self.display_content2d[pixel_y][pixel_x];
-                if pixel && pixel != bit_set {
+                let previous_value = self.display_content2d[pixel_y][pixel_x];
+                let new_value = previous_value != bit_set;
+                if !new_value && previous_value {
                     pixel_erased = true
                 }
-                self.display_content2d[pixel_y][pixel_x] = bit_set;
+                self.display_content2d[pixel_y][pixel_x] = new_value;
             }
         }
 
