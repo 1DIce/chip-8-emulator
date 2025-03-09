@@ -4,6 +4,8 @@ use std::{
     cell::RefCell,
     env::{self},
     fs,
+    sync::{mpsc, Arc, Mutex},
+    thread,
 };
 
 use cpu::Cpu;
@@ -39,28 +41,31 @@ fn main() -> Result<()> {
         },
     )?;
 
-    let renderer = RefCell::new(Renderer::new());
-    let keyboard = RefCell::new(Keyboard::new());
-    let mut cpu = Cpu::new(&renderer, &keyboard);
+    let (mut display_receiver, display_sender) = single_value_channel::channel();
+    let (keyboard_receiver, pressed_keys_sender) = single_value_channel::channel();
 
-    let expected_cycles = 10000;
-    cpu.load_program_into_memory(&rom);
-
-    let mut cycle_count = 0;
+    let renderer = Renderer::new(display_sender);
+    let keyboard = Keyboard::new(keyboard_receiver);
 
     let mut frame_buffer: [u32; SCREEN_WIDTH * SCREEN_HEIGHT] = [0; SCREEN_WIDTH * SCREEN_HEIGHT];
 
-    while window.is_open() && !window.is_key_down(Key::Escape) {
-        if cycle_count < expected_cycles {
+    thread::spawn(move || {
+        let mut cpu = Cpu::new(renderer, keyboard);
+        cpu.load_program_into_memory(&rom);
+        loop {
             cpu.run_cycle();
         }
-        cycle_count += 1;
+    });
 
-        keyboard
-            .borrow_mut()
-            .process_keyboard_event(window.get_keys_pressed(KeyRepeat::Yes));
+    while window.is_open() && !window.is_key_down(Key::Escape) {
+        if !pressed_keys_sender.has_no_receiver() {
+            pressed_keys_sender.update(Some(window.get_keys_pressed(KeyRepeat::Yes)))?;
+        }
 
-        renderer.borrow().update_pixels(&mut frame_buffer);
+        if let Some(latest) = display_receiver.latest() {
+            update_pixels(&mut frame_buffer, latest)
+        }
+
         window.update_with_buffer(&frame_buffer, SCREEN_WIDTH, SCREEN_HEIGHT)?;
     }
 
@@ -72,4 +77,19 @@ fn load_rom(file_path: &str) -> Result<Vec<u8>> {
         return fs::read(file_path).map_err(|e| anyhow!(e));
     }
     return Err(anyhow!("Rom file '{}' does not exist", file_path));
+}
+
+fn update_pixels(frame_buffer: &mut [u32], display_content: &[[bool; 64]; 32]) {
+    for (i, frame_rgb) in frame_buffer.iter_mut().enumerate() {
+        let x = i % SCREEN_WIDTH;
+        let y = i / SCREEN_WIDTH;
+
+        let rgb: u32 = if display_content[y][x] {
+            0x5e << 16 | 0x48 << 8 | 0xe8
+        } else {
+            0x48 << 16 | 0xb2 << 8 | 0xe8
+        };
+
+        *frame_rgb = rgb;
+    }
 }

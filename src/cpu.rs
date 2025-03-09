@@ -25,24 +25,24 @@ struct Registers {
     stack_pointer: Option<u8>,
 }
 
-pub struct Cpu<'a> {
+pub struct Cpu {
     registers: Registers,
     /// an array of 16 16-bit values, used to store the address that the interpreter should return to when finished with a subroutine
     stack: [u16; 16],
 
     memory: Memory,
 
-    renderer: &'a RefCell<Renderer>,
+    renderer: Renderer,
 
-    keyboard: &'a RefCell<Keyboard>,
+    keyboard: Keyboard,
 
     audio: Audio,
 
     time_since_timer_update: Option<Instant>,
 }
 
-impl<'a> Cpu<'a> {
-    pub fn new(renderer: &'a RefCell<Renderer>, keyboard: &'a RefCell<Keyboard>) -> Cpu<'a> {
+impl Cpu {
+    pub fn new(renderer: Renderer, keyboard: Keyboard) -> Cpu {
         return Cpu {
             registers: Registers {
                 general_registers: [0; 16],
@@ -197,7 +197,7 @@ impl<'a> Cpu<'a> {
     fn exec_skip_if_key_not_pressed(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
         let vx = self.registers.general_registers[x];
-        if !self.keyboard.borrow().is_key_pressed_or_held(&vx) {
+        if !self.keyboard.is_key_pressed_or_held(&vx) {
             self.registers.program_counter.skip_instruction();
         } else {
             self.registers.program_counter.increment();
@@ -207,7 +207,7 @@ impl<'a> Cpu<'a> {
     fn exec_skip_if_key_pressed(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
         let vx = self.registers.general_registers[x];
-        if self.keyboard.borrow().is_key_pressed_or_held(&vx) {
+        if self.keyboard.is_key_pressed_or_held(&vx) {
             self.registers.program_counter.skip_instruction();
         } else {
             self.registers.program_counter.increment();
@@ -435,7 +435,7 @@ impl<'a> Cpu<'a> {
 
     /// All execution stops until a key is pressed, then the value of that key is stored in Vx.
     fn exec_wait_until_key_press(&mut self, instruction: &Instruction) {
-        let pressed_key = self.keyboard.borrow().get_pressed_key();
+        let pressed_key = self.keyboard.get_pressed_key();
         if let Some(chip_8_key) = pressed_key {
             let x = instruction.x() as usize;
             self.registers.general_registers[x] = chip_8_key;

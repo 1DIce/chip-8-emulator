@@ -3,14 +3,18 @@ pub const SCREEN_HEIGHT: usize = 32;
 
 const SPRITE_WIDTH: usize = 8;
 
+pub type DisplaySender = single_value_channel::Updater<Option<[[bool; 64]; 32]>>;
+
 pub struct Renderer {
     display_content2d: [[bool; SCREEN_WIDTH]; SCREEN_HEIGHT],
+    display_sender: DisplaySender,
 }
 
 impl Renderer {
-    pub fn new() -> Self {
+    pub fn new(display_sender: DisplaySender) -> Self {
         return Renderer {
             display_content2d: [[false; 64]; 32],
+            display_sender,
         };
     }
 
@@ -46,21 +50,14 @@ impl Renderer {
                 self.display_content2d[pixel_y][pixel_x] = bit_set;
             }
         }
-        return pixel_erased;
-    }
 
-    pub fn update_pixels(&self, frame_buffer: &mut [u32]) {
-        for (i, frame_rgb) in frame_buffer.iter_mut().enumerate() {
-            let x = i % SCREEN_WIDTH;
-            let y = i / SCREEN_WIDTH;
-
-            let rgb: u32 = if self.display_content2d[y][x] {
-                0x5e << 16 | 0x48 << 8 | 0xe8
-            } else {
-                0x48 << 16 | 0xb2 << 8 | 0xe8
-            };
-
-            *frame_rgb = rgb;
+        if !self.display_sender.has_no_receiver() {
+            let update_result = self.display_sender.update(Some(self.display_content2d));
+            if update_result.is_err() {
+                println!("Failed to sent display update");
+            }
         }
+
+        return pixel_erased;
     }
 }
