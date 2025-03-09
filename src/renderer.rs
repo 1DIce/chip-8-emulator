@@ -4,7 +4,7 @@ pub const SCREEN_HEIGHT: usize = 32;
 const SPRITE_WIDTH: usize = 8;
 
 pub struct Renderer {
-    display_content2d: [[bool; SCREEN_WIDTH as usize]; SCREEN_HEIGHT as usize],
+    display_content2d: [[bool; SCREEN_WIDTH]; SCREEN_HEIGHT],
 }
 
 impl Renderer {
@@ -31,7 +31,7 @@ impl Renderer {
             for bit_index in (0..SPRITE_WIDTH).rev() {
                 let pixel_x = normalized_x + SPRITE_WIDTH - 1 - bit_index;
                 let pixel_y = normalized_y + sprite_y;
-                if pixel_x >= SCREEN_WIDTH as usize || pixel_y >= SCREEN_HEIGHT as usize {
+                if pixel_x >= SCREEN_WIDTH || pixel_y >= SCREEN_HEIGHT {
                     // the pixel would be out of screen there in wrapping around in this case
                     continue;
                 }
@@ -51,8 +51,8 @@ impl Renderer {
 
     pub fn update_pixels(&self, frame_buffer: &mut [u32]) {
         for (i, frame_rgb) in frame_buffer.iter_mut().enumerate() {
-            let x = i % SCREEN_WIDTH as usize;
-            let y = i / SCREEN_WIDTH as usize;
+            let x = i % SCREEN_WIDTH;
+            let y = i / SCREEN_WIDTH;
 
             let rgb: u32 = if self.display_content2d[y][x] {
                 0x5e << 16 | 0x48 << 8 | 0xe8
