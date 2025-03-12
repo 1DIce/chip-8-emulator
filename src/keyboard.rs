@@ -2,7 +2,12 @@ use std::collections::HashSet;
 
 use minifb::Key;
 
-type KeysPressedReceiver = single_value_channel::Receiver<Option<Vec<Key>>>;
+pub struct KeysChange {
+    pub pressed: Vec<Key>,
+    pub released: Vec<Key>,
+}
+
+type KeysPressedReceiver = single_value_channel::Receiver<Option<KeysChange>>;
 
 pub struct Keyboard {
     pressed_keys: HashSet<u8>,
@@ -18,27 +23,28 @@ impl Keyboard {
     }
 
     pub fn is_key_pressed_or_held(&mut self, chip_8_key: &u8) -> bool {
-        //return self.pressed_keys.contains(chip_8_key);
-        if let Some(keys_pressed) = self.key_receiver.latest() {
-            for pressed in keys_pressed.iter() {
-                if let Some(pressed_chip_8_key) = to_chip_8_key(*pressed) {
-                    if pressed_chip_8_key == *chip_8_key {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
+        self.update_pressed_keys();
+        return self.pressed_keys.contains(chip_8_key);
     }
 
     pub fn get_pressed_key(&mut self) -> Option<u8> {
-        //return self.pressed_keys.iter().next().cloned();
-        return self
-            .key_receiver
-            .latest()
-            .as_ref()
-            .and_then(|pressed_keys| pressed_keys.iter().next().cloned())
-            .and_then(to_chip_8_key);
+        self.update_pressed_keys();
+        return self.pressed_keys.iter().next().cloned();
+    }
+
+    fn update_pressed_keys(&mut self) {
+        if let Some(changed_keys) = self.key_receiver.latest() {
+            for pressed in changed_keys.pressed.iter() {
+                if let Some(pressed_chip_8_key) = to_chip_8_key(*pressed) {
+                    self.pressed_keys.insert(pressed_chip_8_key);
+                }
+            }
+            for released in changed_keys.released.iter() {
+                if let Some(released_chip_8_key) = to_chip_8_key(*released) {
+                    self.pressed_keys.remove(&released_chip_8_key);
+                }
+            }
+        }
     }
 
     //pub(crate) fn process_keyboard_event(&mut self, pressed: Vec<Key>) {

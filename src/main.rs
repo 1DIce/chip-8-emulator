@@ -59,7 +59,10 @@ fn main() -> Result<()> {
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         if !pressed_keys_sender.has_no_receiver() {
-            pressed_keys_sender.update(Some(window.get_keys_pressed(KeyRepeat::Yes)))?;
+            pressed_keys_sender.update(Some(keyboard::KeysChange {
+                pressed: window.get_keys_pressed(KeyRepeat::No),
+                released: window.get_keys_released(),
+            }))?;
         }
 
         if let Some(latest) = display_receiver.latest() {
