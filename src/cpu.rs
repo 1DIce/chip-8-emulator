@@ -1,6 +1,7 @@
 use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::time::Instant;
+use std::usize;
 
 use crate::audio::Audio;
 use crate::instruction::Instruction;
@@ -355,6 +356,7 @@ impl Cpu {
         let y = instruction.y();
         self.registers.general_registers[x as usize] |=
             self.registers.general_registers[y as usize];
+        self.registers.general_registers[CARRY_REG_ADDRESS] = 0;
         self.registers.program_counter.increment();
     }
 
@@ -366,6 +368,7 @@ impl Cpu {
         let y = instruction.y();
         self.registers.general_registers[x as usize] &=
             self.registers.general_registers[y as usize];
+        self.registers.general_registers[CARRY_REG_ADDRESS] = 0;
         self.registers.program_counter.increment();
     }
 
@@ -374,6 +377,7 @@ impl Cpu {
         let y = instruction.y();
         self.registers.general_registers[x as usize] ^=
             self.registers.general_registers[y as usize];
+        self.registers.general_registers[CARRY_REG_ADDRESS] = 0;
         self.registers.program_counter.increment();
     }
 
