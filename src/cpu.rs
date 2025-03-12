@@ -158,8 +158,8 @@ impl Cpu {
 
             (0xF, _, 0x2, _) => self.exec_set_i_to_sprite_address(&instruction),
             (0xF, _, 0x3, _) => self.exec_store_vx_as_bsd_in_memory(&instruction),
-            (0xF, _, 0x5, _) => self.exec_store_registers_in_memory(&instruction),
-            (0xF, _, 0x6, _) => self.exec_load_registers_from_memory(&instruction),
+            (0xF, _, 0x5, 0x5) => self.exec_store_registers_in_memory(&instruction),
+            (0xF, _, 0x6, 0x5) => self.exec_load_registers_from_memory(&instruction),
             _ => panic!("unexpected instruction"),
         };
     }
@@ -492,25 +492,35 @@ impl Cpu {
         self.registers.program_counter.increment();
     }
 
+    ///  The value of each variable register from V0 to VX inclusive (if X is 0, then only V0)
+    ///  will be stored in successive memory addresses, starting with the one that’s stored in I.
+    ///  V0 will be stored at the address in I, V1 will be stored in I + 1, and so on, until VX is stored in I + X.
+    ///
+    ///  Chip-8 quirk: Each time it stored or loaded one register, it incremented I.
+    ///  After the instruction was finished, I would end up being set to the new value I + X + 1.
     fn exec_store_registers_in_memory(&mut self, instruction: &Instruction) {
-        let x = instruction.x() as usize;
-        //let vx = self.registers.general_registers[x];
+        let x = instruction.x();
 
         let registers = self.registers.general_registers;
-        let i = self.registers.i;
-        self.memory.write_bytes(i, &registers[0..=x]);
+        self.memory
+            .write_bytes(self.registers.i, &registers[0..=x as usize]);
+        self.registers.i += x as u16 + 1;
         self.registers.program_counter.increment();
     }
 
+    ///  Values from V0 to VX inclusive (if X is 0, then only V0)
+    ///  will be loaded from successive memory addresses, starting with the one that’s stored in I.
+    ///  V0 will be loaded from the address in I, V1 will be loaded from I + 1, and so on, until VX is loaded from I + X.
+    ///
+    ///  Chip-8 quirk: Each time it loaded one register, it incremented I.
+    ///  After the instruction was finished, I would end up being set to the new value I + X + 1.
     fn exec_load_registers_from_memory(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
-        //let vx = self.registers.general_registers[x];
-
-        let from = self.registers.i;
-        let read_data = self.memory.read_bytes(from, 1 + x as u16);
+        let read_data = self.memory.read_bytes(self.registers.i, 1 + x as u16);
 
         for (index, value) in read_data.iter().enumerate() {
             self.registers.general_registers[index] = *value;
+            self.registers.i += 1;
         }
         self.registers.program_counter.increment();
     }
