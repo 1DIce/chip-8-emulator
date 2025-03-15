@@ -1,7 +1,7 @@
 use std::borrow::BorrowMut;
-use std::cell::RefCell;
 use std::time::Instant;
-use std::usize;
+
+use u4::{U4x2, U4};
 
 use crate::audio::Audio;
 use crate::instruction::Instruction;
@@ -70,14 +70,14 @@ impl Cpu {
         if self.time_since_timer_update.is_none() {
             self.time_since_timer_update = Some(Instant::now());
         }
-        if self
+        let elapsed_frames = self
             .time_since_timer_update
             .expect("timer exists")
             .elapsed()
             .as_millis()
-            >= (1000 / 60)
-        {
-            self.progress_timer_registers();
+            / 60;
+        if elapsed_frames >= 1 {
+            self.progress_timer_registers(elapsed_frames);
             self.time_since_timer_update = Some(Instant::now());
         }
 
@@ -89,13 +89,19 @@ impl Cpu {
         self.evaluate_instructions(&instruction);
     }
 
-    fn progress_timer_registers(&mut self) {
+    fn progress_timer_registers(&mut self, elapsed_frames: u128) {
         if self.registers.delay_timer > 0 {
-            self.registers.delay_timer -= 1;
+            self.registers.delay_timer = self
+                .registers
+                .delay_timer
+                .saturating_sub(elapsed_frames as u8);
         }
         if self.registers.sound_timer > 0 {
             self.audio.play(self.registers.sound_timer);
-            self.registers.sound_timer -= 1;
+            self.registers.sound_timer = self
+                .registers
+                .sound_timer
+                .saturating_sub(elapsed_frames as u8);
         } else {
             self.audio.stop();
         }
