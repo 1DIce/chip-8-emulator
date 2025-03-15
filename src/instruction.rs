@@ -1,5 +1,4 @@
 use core::fmt;
-use std::fmt::Write;
 
 use u4::U4x2;
 use u4::U4;
@@ -63,7 +62,7 @@ impl Instruction {
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for byte in self.bytes.iter() {
-            write!(f, "{}{}", byte.left(), byte.right())?;
+            write!(f, "{:#02x}{:#02x}", byte.left(), byte.right())?;
         }
         return Ok(());
     }

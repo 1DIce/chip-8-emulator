@@ -1,9 +1,11 @@
 use anyhow::{anyhow, Result};
+use logging::setup_logging;
 use minifb::{Key, KeyRepeat, Scale, ScaleMode, Window, WindowOptions};
 use std::{
     env::{self},
     fs, thread,
 };
+use tracing::{debug, info};
 
 use cpu::Cpu;
 use keyboard::Keyboard;
@@ -13,6 +15,7 @@ mod audio;
 mod cpu;
 mod instruction;
 mod keyboard;
+mod logging;
 mod memory;
 mod program_counter;
 mod renderer;
@@ -23,11 +26,14 @@ const BACKGROUND_COLOR_RGB: u32 = 0x00 << 16 | 0x00 << 8 | 0x00;
 const FOREGROUND_COLOR_RGB: u32 = 0x00 << 16 | 0x99 << 8 | 0x00;
 
 fn main() -> Result<()> {
+    setup_logging();
+
     let args: Vec<String> = env::args().collect();
 
     let rom: Vec<u8> = if args.len() > 1 {
         load_rom(&args[1])?
     } else {
+        info!("No rom provided, using default rom");
         load_rom("./roms/1-chip8-logo.ch8")?
     };
 
@@ -65,8 +71,8 @@ fn main() -> Result<()> {
             released: window.get_keys_released(),
         };
         if !change.released.is_empty() || !change.pressed.is_empty() {
-            println!("pressed: {:?}", change.pressed);
-            println!("released: {:?}", change.released);
+            debug!("pressed: {:?}", change.pressed);
+            debug!("released: {:?}", change.released);
             pressed_keys_sender.send(change)?;
         }
 

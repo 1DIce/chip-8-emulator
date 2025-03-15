@@ -1,6 +1,7 @@
 use std::borrow::BorrowMut;
 use std::time::Instant;
 
+use tracing::debug;
 use u4::{U4x2, U4};
 
 use crate::audio::Audio;
@@ -110,8 +111,7 @@ impl Cpu {
     fn evaluate_instructions(&mut self, instruction_bytes: &[u8; 2]) {
         let instruction = Instruction::new(instruction_bytes);
 
-        print!("Instruction: ");
-        instruction.print();
+        debug!("Evaluating instruction: {}", instruction);
 
         let nibbles = instruction.nibbles_lo();
         match nibbles {

@@ -1,3 +1,5 @@
+use tracing::error;
+
 pub const SCREEN_WIDTH: usize = 64;
 pub const SCREEN_HEIGHT: usize = 32;
 
@@ -55,7 +57,7 @@ impl Renderer {
         if !self.display_sender.has_no_receiver() {
             let update_result = self.display_sender.update(Some(self.display_content2d));
             if update_result.is_err() {
-                println!("Failed to sent display update");
+                error!("Failed to sent display update");
             }
         }
 
