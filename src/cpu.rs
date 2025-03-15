@@ -148,8 +148,8 @@ impl Cpu {
             (0xD, _, _, 0x0) => self.ignore_instruction(),
             (0xD, _, _, _) => self.exec_display_sprite_8xN(&instruction),
 
-            (0xE, _, _, 0x1) => self.exec_skip_if_key_not_pressed(&instruction),
-            (0xE, _, _, 0xE) => self.exec_skip_if_key_pressed(&instruction),
+            (0xE, _, 0x9, 0xE) => self.exec_skip_if_key_pressed(&instruction),
+            (0xE, _, 0xA, 0x1) => self.exec_skip_if_key_not_pressed(&instruction),
 
             (0xF, _, 0x0, 0x7) => self.exec_set_vx_to_delay_timer(&instruction),
             (0xF, _, 0x0, 0xA) => self.exec_wait_until_key_press(&instruction),
@@ -199,7 +199,10 @@ impl Cpu {
     fn exec_skip_if_key_not_pressed(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
         let vx = self.registers.general_registers[x];
-        if !self.keyboard.is_key_pressed_or_held(&vx) {
+        if !self
+            .keyboard
+            .is_key_pressed_or_held(&U4x2::from(vx).right())
+        {
             self.registers.program_counter.skip_instruction();
         } else {
             self.registers.program_counter.increment();
@@ -209,13 +212,17 @@ impl Cpu {
     fn exec_skip_if_key_pressed(&mut self, instruction: &Instruction) {
         let x = instruction.x() as usize;
         let vx = self.registers.general_registers[x];
-        if self.keyboard.is_key_pressed_or_held(&vx) {
+        if self
+            .keyboard
+            .is_key_pressed_or_held(&U4x2::from(vx).right())
+        {
             self.registers.program_counter.skip_instruction();
         } else {
             self.registers.program_counter.increment();
         }
     }
 
+    #[allow(non_snake_case)]
     /// The interpreter reads n bytes from memory, starting at the address stored in I.
     /// These bytes are then displayed as sprites on screen at coordinates (Vx, Vy)
     fn exec_display_sprite_8xN(&mut self, instruction: &Instruction) {
@@ -440,14 +447,19 @@ impl Cpu {
 
     /// All execution stops until a key is pressed, then the value of that key is stored in Vx.
     fn exec_wait_until_key_press(&mut self, instruction: &Instruction) {
-        let pressed_key = self.keyboard.get_pressed_key();
-        if let Some(chip_8_key) = pressed_key {
-            let x = instruction.x() as usize;
-            self.registers.general_registers[x] = chip_8_key;
-            self.registers.program_counter.increment();
+        let mut key_pressed: Option<U4> = None;
+        loop {
+            if let Some(key) = key_pressed {
+                if !self.keyboard.is_key_pressed_or_held(&key) {
+                    break;
+                }
+            } else if let Some(pressed_key) = self.keyboard.get_pressed_key() {
+                key_pressed = Some(pressed_key);
+                let x = instruction.x() as usize;
+                self.registers.general_registers[x] = pressed_key as u8;
+            }
         }
-        // do not progress the program_counter if no key was pressed.
-        // The instruction will be evaluated again until a key is pressed
+        self.registers.program_counter.increment();
     }
 
     /// Delay timer is set equal to the value of Vx.

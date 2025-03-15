@@ -1,10 +1,9 @@
 use std::time::Duration;
 
-use rodio::{source::SineWave, OutputStream, OutputStreamHandle, Sink, Source};
+use rodio::{source::SineWave, OutputStream, Sink, Source};
 
 pub struct Audio {
-    stream: OutputStream,
-    stream_handle: OutputStreamHandle,
+    _stream: OutputStream,
     sink: Sink,
 }
 
@@ -13,8 +12,7 @@ impl Audio {
         let (stream, stream_handle) = OutputStream::try_default().unwrap();
         let sink = Sink::try_new(&stream_handle).unwrap();
         return Self {
-            stream,
-            stream_handle,
+            _stream: stream,
             sink,
         };
     }

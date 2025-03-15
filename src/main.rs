@@ -42,7 +42,7 @@ fn main() -> Result<()> {
     )?;
 
     let (mut display_receiver, display_sender) = single_value_channel::channel();
-    let (keyboard_receiver, pressed_keys_sender) = single_value_channel::channel();
+    let (pressed_keys_sender, keyboard_receiver) = std::sync::mpsc::channel();
 
     let renderer = Renderer::new(display_sender);
     let keyboard = Keyboard::new(keyboard_receiver);
@@ -58,11 +58,14 @@ fn main() -> Result<()> {
     });
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        if !pressed_keys_sender.has_no_receiver() {
-            pressed_keys_sender.update(Some(keyboard::KeysChange {
-                pressed: window.get_keys_pressed(KeyRepeat::No),
-                released: window.get_keys_released(),
-            }))?;
+        let change = keyboard::KeysChange {
+            pressed: window.get_keys_pressed(KeyRepeat::No),
+            released: window.get_keys_released(),
+        };
+        if !change.released.is_empty() || !change.pressed.is_empty() {
+            println!("pressed: {:?}", change.pressed);
+            println!("released: {:?}", change.released);
+            pressed_keys_sender.send(change)?;
         }
 
         if let Some(latest) = display_receiver.latest() {
