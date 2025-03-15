@@ -1,3 +1,6 @@
+use core::fmt;
+use std::fmt::Write;
+
 use u4::U4x2;
 use u4::U4;
 
@@ -55,13 +58,13 @@ impl Instruction {
         nnn |= self.bytes[1].packed as u16;
         return nnn;
     }
+}
 
-    pub fn print(&self) {
+impl fmt::Display for Instruction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for byte in self.bytes.iter() {
-            let left = byte.left();
-            let right = byte.right();
-            print!("{left:x}{right:x}");
+            write!(f, "{}{}", byte.left(), byte.right())?;
         }
-        println!();
+        return Ok(());
     }
 }
