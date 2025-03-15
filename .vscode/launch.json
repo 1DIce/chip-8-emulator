@@ -5,8 +5,8 @@
       "type": "codelldb",
       "request": "launch",
       "name": "Debug",
-      "program": "${fileDirname}/../target/debug/chip-8-emulator",
-      "args": [],
+      "program": "${fileDirname}/../target/debug/chip_8_emulator",
+      "args": ["./roms/flightrunner.ch8"],
       "cwd": "${workspaceFolder}",
       "sourceLanguages": ["rust"]
     }
