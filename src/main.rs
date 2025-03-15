@@ -1,11 +1,8 @@
 use anyhow::{anyhow, Result};
 use minifb::{Key, KeyRepeat, Scale, ScaleMode, Window, WindowOptions};
 use std::{
-    cell::RefCell,
     env::{self},
-    fs,
-    sync::{mpsc, Arc, Mutex},
-    thread,
+    fs, thread,
 };
 
 use cpu::Cpu;
@@ -19,6 +16,11 @@ mod keyboard;
 mod memory;
 mod program_counter;
 mod renderer;
+
+#[allow(clippy::eq_op, clippy::identity_op)]
+const BACKGROUND_COLOR_RGB: u32 = 0x00 << 16 | 0x00 << 8 | 0x00;
+#[allow(clippy::eq_op, clippy::identity_op)]
+const FOREGROUND_COLOR_RGB: u32 = 0x00 << 16 | 0x99 << 8 | 0x00;
 
 fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
@@ -91,9 +93,9 @@ fn update_pixels(frame_buffer: &mut [u32], display_content: &[[bool; 64]; 32]) {
         let y = i / SCREEN_WIDTH;
 
         let rgb: u32 = if display_content[y][x] {
-            0x5e << 16 | 0x48 << 8 | 0xe8
+            FOREGROUND_COLOR_RGB
         } else {
-            0x48 << 16 | 0xb2 << 8 | 0xe8
+            BACKGROUND_COLOR_RGB
         };
 
         *frame_rgb = rgb;
