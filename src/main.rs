@@ -34,7 +34,7 @@ fn main() -> Result<()> {
         load_rom(&args[1])?
     } else {
         info!("No rom provided, using default rom");
-        load_rom("./roms/1-chip8-logo.ch8")?
+        load_rom("./roms/test/1-chip8-logo.ch8")?
     };
 
     let mut window = Window::new(
